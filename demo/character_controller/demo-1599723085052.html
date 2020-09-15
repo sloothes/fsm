@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+
+		<title>Finite State Machine (v0.0.1)</title>
+
+		<meta charset="utf-8">
+		<meta name="generator" content="Three.js Editor">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+		<link rel="stylesheet" href="/css/joystick.css">
+		<link rel="stylesheet" href="/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/css/bootbox-dialoges.css">
+		<link rel="stylesheet" href="/css/jcrop.css">
+
+		<script src="/js/watch.js"></script>
+		<script src="/js/Objectid.js"></script>
+		<script src="/js/jquery.min.js"></script> 
+		<script src="/js/system.min.js"></script>
+		<script src="/js/signals.min.js"></script>
+		<script src="/js/inflate.min.js"></script>
+		<script src="/js/zangodb.min.js"></script>
+		<script src="/js/bootstrap.min.js"></script>
+		<script src="/js/validator.min.js"></script>
+		<script src="/js/hold-event.min.js"></script>
+		<script src="/js/jcrop.js"></script>
+
+		<style>
+
+			body {
+				margin: 0px;
+				font-size: 13px;
+				font-family: sans-serif;
+				background-repeat: repeat;
+				background-image: url("https://i.imgur.com/rnZZU0i.png") !important;
+				overflow: hidden;
+			}
+
+			#loading-bar {
+				width:100%;
+				height:100%;
+				top:0; left:0;
+				position:fixed;
+				display:flex;
+				align-items:center;
+				justify-content:center;
+			}
+
+			.middle > * {
+				top:0; 
+				left:0;
+				right:0;
+				bottom:0;
+				margin:auto;
+				position:absolute;
+			}
+
+			#joystick1 {
+				right: calc(40px + 370px);
+			}
+			
+			#jumpButton {
+				right: calc(105px + 370px);
+			}
+
+			.btn-matcap,
+			.btn-terrain {
+				padding:0;
+				float:left;
+				width:55px;
+				height:55px;
+				border:1px solid;
+				border-radius:4px;
+				margin-right:4px;
+				margin-bottom:4px;
+				display:inline-block;
+			}
+
+			.btn-matcap + .btn-matcap,
+			.btn-terrain + .btn-terrain {
+				margin-right:4px;
+			}
+
+		</style>
+	</head>
+
+	<body ontouchstart="">
+
+		<script src="/editor/js/TabUI.js"></script>
+
+		<script>
+			const debugMode = true;
+			const Signal = signals.Signal;
+			const RAD2DEG = 57.29577951308232;
+			const DEG2RAD = 0.017453292519943295;
+			document.body.appendChild( createSidePanel() );
+		</script>
+
+	<!-- THREE.js -->
+
+		<script src="/editor/js/three.js"></script>
+		<script src="/editor/js/MeshWalk.js"></script>
+		<script src="/editor/js/UVsDebug.js"></script>
+		<script src="/editor/js/FBXLoader.js"></script>
+		<script src="/editor/js/VirtualInput.js"></script>
+		<script src="/editor/js/KeyboardState.js"></script>
+		<script src="/editor/js/EditorControls.js"></script>
+		<script src="/editor/js/camera-controls.js"></script>
+		<script src="/editor/js/SubdivisionModifier.js"></script>
+		<script src="/editor/js/three-pathfinding.umd.js"></script>
+
+		<script src="/threejs/r96/examples/js/loaders/MTLLoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/OBJLoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/GLTFLoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/TGALoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/DDSLoader.js"></script>
+
+		<script>
+
+		//	THREE.Loader.Handlers.add( /.tga/, new THREE.TGALoader() );
+		//	THREE.Loader.Handlers.add( /.dds/, new THREE.DDSLoader() );
+
+		</script>
+
+		<script src="/threejs/r96/examples/js/exporters/GLTFExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/STLExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/OBJExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/ColladaExporter.js"></script>
+
+	<!-- Water.js -->
+
+		<script src="/editor/js/Ocean_fft.js"></script>
+		<script src="/editor/js/MirrorRenderer.js"></script>
+		<script src="/editor/js/WaterMaterial.js"></script>
+
+	<!-- Engine.js (order matters) -->
+
+		<script src="/core/ThreeSteeringBehaviours.js"></script>
+		<script src="/core/helpers.js"></script>
+		<script src="/core/keyboard.js"></script>
+		<script src="/core/enviroment.js"></script>
+		<script src="/core/localPlayerEntity.js"></script>
+		<script src="/core/cameraControls.js"></script>
+		<script src="/core/keyboardState.js"></script>
+		<script src="/core/keyInputControls.js"></script>
+		<script src="/core/joystickControls.js"></script>
+
+	<!-- Javascript State Machine.js -->
+
+		<script src="/js/state-machine.js"></script>
+		<script src="/js/state-machine-history.js"></script>
+		<script src="/js/state-machine-visualize.js"></script>
+
+		<script>
+
+		//	State Machine demo for Character controller.
+		//	States: "idling,walking,running,jumping,falling,ect..."
+
+			localPlayer.fsm = (function(controller){
+
+				var transitions = [
+
+				//	{name:"idle", from:"none", to:"idling" }, // init,
+					{name:"goto", from:"*", to:function(state){ return state; }},
+
+				];
+
+				var methods = {
+
+					onInvalidTransition: function(transition, from, to){ 
+						console.error("invalid transition from",from,"to",to);
+					},
+
+				//	onBeforeTransition: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onLeaveState: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onTransition: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onEnterState: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onAfterTransition: function(lifecycle){ debugMode && console.log(lifecycle); },
+
+					onEnterFalling: function(lifecycle){
+					//	debugMode && console.log(lifecycle);
+						controller.isRunning = false; 
+						controller.center.set(0,10,0);
+					},
+				};
+
+				var fsm = new StateMachine({
+				//	init: "idling",              // string, (state)
+					transitions: transitions,    // array,
+					methods: methods,		     // object
+				});
+
+			//	fsm.idle(); console.log( "state:", fsm.state ); // init.
+
+			//	var controller = localPlayer.controller; 
+				controller.addEventListener("startIdling",  function(){ fsm.goto("idling" ); });
+				controller.addEventListener("startWalking", function(){ fsm.goto("running"); });
+				controller.addEventListener("startJumping", function(){ fsm.goto("jumping"); });
+				controller.addEventListener("startFalling", function(){ fsm.goto("falling"); });
+				controller.addEventListener("startSliding", function(){ fsm.goto("sliding"); });
+				debugMode && console.log( controller );
+
+				return fsm;
+
+			})( localPlayer.controller );
+
+		//	Enhanced Visualization.
+		//	Graphviz Visual Editor at: "http://magjac.com/graphviz-visual-editor".
+		//	const visualize = StateMachineVisualize;
+		//	console.log( visualize(fsm, {name:"demo", orientation:"vertical"}) );
+
+		</script>
+
+		<script>
+
+		//	Non-Player Character with Finite State Machine.
+
+			var npcEntity = (function(){
+
+				var radius = 0.5; // important!
+
+			//	A mesh (required for entity).
+			//	You may replace with a skinned mesh.
+
+				var mesh = (function(d){
+					var geometry = new THREE.BoxGeometry(d,d,d);
+					var material = new THREE.MeshBasicMaterial();
+					var mesh = new THREE.Mesh(geometry,material);
+					return mesh;
+				})( 1.0 );
+
+			//	Non-Player Character entity.
+				var npc = (function(mesh){
+					var entity = new Entity(mesh);
+					entity.radius = radius;
+					entity.position.set( 0, 0, 0 );
+					entity.name = "ncp entity";
+					scene.add( entity );
+					return entity; // important!
+				})( mesh );
+
+			//	Non-Player Character controller.
+				var controller = (function( object, radius ){
+					var controller = new MW.CharacterController( object, radius );
+					controller.movementSpeed = 5;
+					controller.maxSlopeGradient = 0.5;
+					controller.center.set(0, radius, 0);
+					world.add( controller );
+				//	Update player direction.
+					watch(controller, "direction", function(prop,action,value){
+						object.rotation.y = value + Math.PI;
+					});
+					return controller;
+				})( npc, radius );
+
+				
+			//	NPC controller Finite State Machine.
+
+			//	var requestFrameID;
+
+			//	options.
+
+				var transitions = [
+
+				//	{name:"walk", from:"*", to:"running"},
+					{name:"goto", from:"*", to:function(state){ return state; }},
+				];
+
+				var methods = {
+
+					onInvalidTransition: function(transition, from, to){ 
+						console.error("NPC invalid transition from",from,"to",to);
+					},
+					
+				//	onIdling: function(lifecycle){
+				//		var ID = lifecycle.fsm._fsm.config.options.requestFrameID;
+				//		debugMode && console.log("requestFrameID:", ID ); // debug.
+				//	},
+
+				//	onEnterFalling.
+					onFalling: function(lifecycle){
+					//	Reset controller center.
+						controller.center.set(0,50,0);
+					//	debugMode && console.log("NPC:", lifecycle);
+					},
+
+				//	lookAt localPlayer.controller.center.
+					onLeaveRunning: function(lifecycle){
+						var ID = lifecycle.fsm._fsm.config.options.requestFrameID;
+						cancelAnimationFrame( ID );
+						console.log("requestFrame", ID, "canceled!!!");
+					},
+
+				//	onEnterRunning.
+					onRunning: function(lifecycle){
+						
+					//	pursue localPlayer.
+						(function update(){
+							lifecycle.fsm._fsm.config.options.requestFrameID = requestAnimationFrame(update);
+						//	console.log(lifecycle.fsm.state, lifecycle.fsm._fsm.config.options.requestFrameID);
+
+						})();
+
+					},
+
+				};
+
+			//	state machine.
+
+				var fsm = new StateMachine({
+					methods: methods,		     // object
+					transitions: transitions,    // array,
+					requestFrameID: null,        // integer,
+					
+				});
+
+				controller.addEventListener("startIdling", function(){ 
+				//	Switch to startWalking immediately on startIdling.
+				//	Use setTimeout to trigger changed event; important!
+					setTimeout(function(){
+						controller.isIdling  = !controller.isIdling; 
+						controller.isRunning = !controller.isIdling;
+					}); 
+				//	debugMode && console.log( this ); // --> controller.
+				});
+
+				controller.addEventListener("startFalling", function(){ 
+				//	Switch to startIdling at end of falling.
+				//	Use setTimeout to trigger changed event; important!
+					setTimeout(function(){
+						controller.isIdling = false;
+						controller.isRunning = false;
+					}); 
+				//	debugMode && console.log( this ); // --> controller.
+				});
+
+				controller.addEventListener("startIdling",  function(e){ fsm.goto("idling" ); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startWalking", function(e){ fsm.goto("running"); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startJumping", function(e){ fsm.goto("jumping"); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startFalling", function(e){ fsm.goto("falling"); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startSliding", function(e){ fsm.goto("sliding"); console.log(e.type, "\tstate:", fsm.state); });
+
+				npc.fsm = fsm; 
+				npc.controller = controller; 
+
+				return npc;
+
+			})();
+
+			console.log( "NPC:", npcEntity );
+
+		</script>
+
+	<!-- Entities.js -->
+
+		<script>
+/*
+			const entities = [];
+			
+			(function( entities ){
+
+				var clock = new THREE.Clock();
+
+				(function update(){
+
+					requestAnimationFrame( update );
+					var delta = clock.getDelta();
+					var length = entities.length;
+					for ( var i = 0; i < length; i++ ){
+						entities[i].update( delta );
+					}
+
+				})();
+
+			})( entities );
+
+		//	Entity example.
+			var geometry = new THREE.BoxGeometry(1,1,1);
+			var material = new THREE.MeshLambertMaterial();
+			var mesh = new THREE.Mesh(geometry,material);
+			var entity = new Entity(mesh);
+			entity.radius = 1; entity.position.y = 0.5; 
+			console.log("entity:", entity);
+			scene.add(entity); entities.push(entity);
+*/
+		</script>
+
+	</body>
+</html>
