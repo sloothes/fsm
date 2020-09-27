@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+
+		<title>Finite State Machine (v0.0.2)</title>
+
+		<meta charset="utf-8">
+		<meta name="generator" content="Three.js Editor">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+		<link rel="stylesheet" href="/css/joystick.css">
+		<link rel="stylesheet" href="/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/css/bootbox-dialoges.css">
+		<link rel="stylesheet" href="/css/jcrop.css">
+
+		<script src="/js/watch.js"></script>
+		<script src="/js/Objectid.js"></script>
+		<script src="/js/jquery.min.js"></script> 
+		<script src="/js/system.min.js"></script>
+		<script src="/js/signals.min.js"></script>
+		<script src="/js/inflate.min.js"></script>
+		<script src="/js/zangodb.min.js"></script>
+		<script src="/js/bootstrap.min.js"></script>
+		<script src="/js/validator.min.js"></script>
+		<script src="/js/hold-event.min.js"></script>
+		<script src="/js/jcrop.js"></script>
+
+		<style>
+
+			body {
+				margin: 0px;
+				font-size: 13px;
+				font-family: sans-serif;
+				background-repeat: repeat;
+				background-image: url("https://i.imgur.com/rnZZU0i.png") !important;
+				overflow: hidden;
+			}
+
+			#loading-bar {
+				width:100%;
+				height:100%;
+				top:0; left:0;
+				position:fixed;
+				display:flex;
+				align-items:center;
+				justify-content:center;
+			}
+
+			.middle > * {
+				top:0; 
+				left:0;
+				right:0;
+				bottom:0;
+				margin:auto;
+				position:absolute;
+			}
+
+			#joystick1 {
+				right: calc(40px + 370px);
+			}
+			
+			#jumpButton {
+				right: calc(105px + 370px);
+			}
+
+			.btn-matcap,
+			.btn-terrain {
+				padding:0;
+				float:left;
+				width:55px;
+				height:55px;
+				border:1px solid;
+				border-radius:4px;
+				margin-right:4px;
+				margin-bottom:4px;
+				display:inline-block;
+			}
+
+			.btn-matcap + .btn-matcap,
+			.btn-terrain + .btn-terrain {
+				margin-right:4px;
+			}
+
+		</style>
+	</head>
+
+	<body ontouchstart="">
+
+		<script src="/editor/js/TabUI.js"></script>
+
+		<script>
+			const debugMode = true;
+			const Signal = signals.Signal;
+			const RAD2DEG = 57.29577951308232;
+			const DEG2RAD = 0.017453292519943295;
+			document.body.appendChild( createSidePanel() );
+		</script>
+
+	<!-- THREE.js -->
+
+		<script src="/editor/js/three.js"></script>
+		<script src="/editor/js/MeshWalk.js"></script>
+		<script src="/editor/js/UVsDebug.js"></script>
+		<script src="/editor/js/FBXLoader.js"></script>
+		<script src="/editor/js/VirtualInput.js"></script>
+		<script src="/editor/js/KeyboardState.js"></script>
+		<script src="/editor/js/EditorControls.js"></script>
+		<script src="/editor/js/camera-controls.js"></script>
+		<script src="/editor/js/SubdivisionModifier.js"></script>
+		<script src="/editor/js/three-pathfinding.umd.js"></script>
+
+		<script src="/threejs/r96/examples/js/loaders/MTLLoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/OBJLoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/GLTFLoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/TGALoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/DDSLoader.js"></script>
+
+		<script>
+
+		//	THREE.Loader.Handlers.add( /.tga/, new THREE.TGALoader() );
+		//	THREE.Loader.Handlers.add( /.dds/, new THREE.DDSLoader() );
+
+		</script>
+
+		<script src="/threejs/r96/examples/js/exporters/GLTFExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/STLExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/OBJExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/ColladaExporter.js"></script>
+
+	<!-- Water.js -->
+
+		<script src="/editor/js/Ocean_fft.js"></script>
+		<script src="/editor/js/MirrorRenderer.js"></script>
+		<script src="/editor/js/WaterMaterial.js"></script>
+
+	<!-- Engine.js (order matters) -->
+
+		<script src="/core/ThreeSteeringBehaviours.js"></script>
+		<script src="/core/helpers.js"></script>
+		<script src="/core/keyboard.js"></script>
+		<script src="/core/enviroment.js"></script>
+		<script src="/core/localPlayerEntity.js"></script>
+		<script src="/core/cameraControls.js"></script>
+		<script src="/core/keyboardState.js"></script>
+		<script src="/core/keyInputControls.js"></script>
+		<script src="/core/joystickControls.js"></script>
+
+	<!-- Javascript State Machine.js -->
+
+		<script src="/js/state-machine.js"></script>
+		<script src="/js/state-machine-history.js"></script>
+		<script src="/js/state-machine-visualize.js"></script>
+
+		<script>
+
+			TabUI.add( "Animations", "animations-tab" ); TabUI.append("Animations");
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "Animation";
+				var select = document.createElement("select"); select.id = "animations-droplist";
+				select.style.cssText = "width:180px;color:#000;border:1px solid;border-radius:4px;";
+				select.style.cssText += "padding:2px 4px 4px 4px;font-size:20px;margin-left:10px;";
+				row.appendChild( select ); tab.appendChild( row );
+
+				watch( select, "onchange", function(prop,event,value){
+					debugMode && console.log({item:select,event:event,value:value});
+				});
+
+				select.addEventListener( "change", function(){
+					callWatchers( select, "onchange", "change", select.value );
+				});
+
+			})( TabUI.Animations.tab );
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "select:"; row.style.cssText = "margin:10px 15px 0 0;height:40px;";
+				var vect = document.createElement("div"); vect.style.cssText = "width:180px;text-align:center;float:right;";
+				var prev = document.createElement("li"); prev.id = "animations-select-decrease"; 
+				prev.innerHTML = "&#9668;"; prev.style.display = "inline"; prev.classList.add("btn","btn-primary","get-prev-btn","pull-left");
+				var next = document.createElement("li"); next.id = "animations-select-increase";
+				next.innerHTML = "&#9658;"; next.style.display = "inline"; next.classList.add("btn","btn-primary","get-next-btn","pull-right");
+
+				var input = document.createElement("input"); input.id = "animations-select-input"; 
+				input.setAttribute("placeholder", "value" ); input.classList.add("form-control","text-center");
+				input.style.cssText = "color:#000;border:none;display:inline;width:90px;margin:0;";
+				input.style.cssText += "text-align:center;font-size:large;font-weigth:bold;background:none;";
+				vect.appendChild(prev); vect.appendChild(input); vect.appendChild(next); row.appendChild(vect); tab.appendChild( row );
+
+				watch( input, "onchange", function(prop,event,value){
+					debugMode && console.log({item:input,event:event,timescale:value});
+				});
+
+			//	input.addEventListener( "change", function(){ callWatchers( input, "onchange", "change", timescale); });
+
+			})( TabUI.Animations.tab );
+
+			(function( tab ){
+
+				var row = document.createElement("div"); row.style.cssText = "margin:10px 15px 0 0;height:35px;text-align:center;";
+				var replaybutton = document.createElement("div"); replaybutton.id = "animations-replay-button"; replaybutton.textContent = "Replay";
+				replaybutton.style.cssText = "max-width:120px;width:100px;float:left;height:40px;font-size:large;";
+				replaybutton.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+				watch( replaybutton, "onclick", function(prop,event,value){
+					debugMode && console.log({item:input,event:event,value:value});
+				});
+
+			//	replaybutton.addEventListener( "click", function(){
+			//		callWatchers( resetbutton, "onclick", "click", "mixamo.com");
+			//	});
+
+				var button = document.createElement("div"); button.id = "animations-import-button"; button.textContent = "Import animations";
+				button.style.cssText = "min-width:60%;width:180px;float:right;height:40px;font-size:large;";
+				button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+				var input = document.createElement("input"); input.type = "file"; input.id = "animations-file-input";
+				input.style.display = "none"; input.setAttribute("multiple", ""); button.appendChild( input );
+				row.appendChild( replaybutton ); row.appendChild( button ); tab.appendChild( row );
+
+				watch( input, "onchange", function(prop,event,value){
+					debugMode && console.log({item:input,event:event,files:value});
+				});
+
+				input.addEventListener( "change", function(){
+					callWatchers( input, "onchange", "change", input.files);
+				});
+
+				button.addEventListener( "click", function(){
+					input.value = ""; input.click();
+				});
+
+			})( TabUI.Animations.tab );
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "Upperbody";
+				var select = document.createElement("select"); select.id = "upperbody-droplist";
+				select.style.cssText = "width:170px;color:#000;border:1px solid;border-radius:4px;";
+				select.style.cssText += "padding:2px 4px 4px 4px;font-size:20px;margin-left:10px;";
+				row.appendChild( select ); tab.appendChild( row );
+
+				watch( select, "onchange", function(prop,event,value){
+					debugMode && console.log({item:select,event:event,value:value});
+				});
+
+				select.addEventListener( "change", function(){
+					callWatchers( select, "onchange", "change", select.value );
+				});
+
+			})( TabUI.Animations.tab );
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "Lowerbody";
+				var select = document.createElement("select"); select.id = "lowerbody-droplist";
+				select.style.cssText = "width:170px;color:#000;border:1px solid;border-radius:4px;";
+				select.style.cssText += "padding:2px 4px 4px 4px;font-size:20px;margin-left:10px;";
+				row.appendChild( select ); tab.appendChild( row );
+
+				watch( select, "onchange", function(prop,event,value){
+					debugMode && console.log({item:select,event:event,value:value});
+				});
+
+				select.addEventListener( "change", function(){
+					callWatchers( select, "onchange", "change", select.value );
+				});
+
+			})( TabUI.Animations.tab );
+
+
+			TabUI.Animations.role.classList.add("active");
+			TabUI.Animations.tab.classList.add("in","active");
+			TabUI.Animations.pill.scrollIntoViewIfNeeded(false);
+
+		</script>
+
+		<script>
+
+			TabUI.add( "Shooting", "shooting-tab" ); TabUI.append("Shooting");
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "Bullet:"; row.style.cssText = "height:40px;";
+				var select = document.createElement("select"); select.id = "bullet-droplist";
+				select.style.cssText = "width:180px;color:#000;border:1px solid;border-radius:4px;float:right;";
+				select.style.cssText += "padding:2px 4px 4px 4px;font-size:20px;margin-left:10px;margin-right:15px;";
+				row.appendChild( select ); tab.appendChild( row );
+
+				watch( select, "onchange", function(prop,event,value){
+					debugMode && console.log({item:select,event:event,value:value});
+				});
+
+				select.addEventListener( "change", function(){
+					callWatchers( select, "onchange", "change", select.value );
+				});
+
+			})( TabUI.Shooting.tab );
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "speed:"; row.style.cssText = "margin:10px 15px 0 0;height:40px;";
+				var vect = document.createElement("div"); vect.style.cssText = "width:180px;text-align:center;float:right;";
+				var prev = document.createElement("li"); prev.id = "speed-decrease"; 
+				prev.innerHTML = "&#9668;"; prev.style.display = "inline"; prev.classList.add("btn","btn-primary","get-prev-btn","pull-left");
+				var next = document.createElement("li"); next.id = "speed-increase";
+				next.innerHTML = "&#9658;"; next.style.display = "inline"; next.classList.add("btn","btn-primary","get-next-btn","pull-right");
+
+				var input = document.createElement("input"); input.id = "speed-input"; 
+				input.setAttribute("placeholder", "value" ); input.classList.add("form-control","text-center");
+				input.style.cssText = "color:#000;border:none;display:inline;width:90px;margin:0;";
+				input.style.cssText += "text-align:center;font-size:large;font-weigth:bold;background:none;";
+				vect.appendChild(prev); vect.appendChild(input); vect.appendChild(next); row.appendChild(vect); tab.appendChild( row );
+
+				watch( input, "onchange", function(prop,event,value){
+					debugMode && console.log({item:input,event:event,timescale:value});
+				});
+
+			//	input.addEventListener( "change", function(){ callWatchers( input, "onchange", "change", timescale); });
+
+			})( TabUI.Shooting.tab );
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "power:"; row.style.cssText = "margin:10px 15px 0 0;height:40px;";
+				var vect = document.createElement("div"); vect.style.cssText = "width:180px;text-align:center;float:right;";
+				var prev = document.createElement("li"); prev.id = "power-decrease"; 
+				prev.innerHTML = "&#9668;"; prev.style.display = "inline"; prev.classList.add("btn","btn-primary","get-prev-btn","pull-left");
+				var next = document.createElement("li"); next.id = "power-increase";
+				next.innerHTML = "&#9658;"; next.style.display = "inline"; next.classList.add("btn","btn-primary","get-next-btn","pull-right");
+
+				var input = document.createElement("input"); input.id = "power-input"; 
+				input.setAttribute("placeholder", "value" ); input.classList.add("form-control","text-center");
+				input.style.cssText = "color:#000;border:none;display:inline;width:90px;margin:0;";
+				input.style.cssText += "text-align:center;font-size:large;font-weigth:bold;background:none;";
+				vect.appendChild(prev); vect.appendChild(input); vect.appendChild(next); row.appendChild(vect); tab.appendChild( row );
+
+				watch( input, "onchange", function(prop,event,value){
+					debugMode && console.log({item:input,event:event,timescale:value});
+				});
+
+			//	input.addEventListener( "change", function(){ callWatchers( input, "onchange", "change", timescale); });
+
+			})( TabUI.Shooting.tab );
+
+
+			(function( tab ){
+
+				var row = document.createElement("h3"); row.textContent = "direction:"; row.style.cssText = "margin:10px 15px 0 0;height:40px;";
+				var vect = document.createElement("div"); vect.style.cssText = "width:180px;text-align:center;float:right;";
+				var prev = document.createElement("li"); prev.id = "direction-decrease"; 
+				prev.innerHTML = "&#9668;"; prev.style.display = "inline"; prev.classList.add("btn","btn-primary","get-prev-btn","pull-left");
+				var next = document.createElement("li"); next.id = "direction-increase";
+				next.innerHTML = "&#9658;"; next.style.display = "inline"; next.classList.add("btn","btn-primary","get-next-btn","pull-right");
+
+				var input = document.createElement("input"); input.id = "direction-input"; 
+				input.setAttribute("placeholder", "value" ); input.classList.add("form-control","text-center");
+				input.style.cssText = "color:#000;border:none;display:inline;width:90px;margin:0;";
+				input.style.cssText += "text-align:center;font-size:large;font-weigth:bold;background:none;";
+				vect.appendChild(prev); vect.appendChild(input); vect.appendChild(next); row.appendChild(vect); tab.appendChild( row );
+
+				watch( input, "onchange", function(prop,event,value){
+					debugMode && console.log({item:input,event:event,timescale:value});
+				});
+
+			//	input.addEventListener( "change", function(){ callWatchers( input, "onchange", "change", timescale); });
+
+			})( TabUI.Shooting.tab );
+
+			(function( tab ){
+
+				var row = document.createElement("div"); row.style.cssText = "margin:10px 15px 0 0;height:35px;text-align:center;";
+				var resetbutton = document.createElement("div"); resetbutton.id = "reset-button"; resetbutton.textContent = "Reset";
+				resetbutton.style.cssText = "max-width:120px;width:100px;float:left;height:40px;font-size:large;";
+				resetbutton.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+			//	watch( resetbutton, "onclick", function(prop,event,value){
+			//		debugMode && console.log({item:resetbutton,event:event,value:value});
+			//	});
+
+				var shootbutton = document.createElement("div"); shootbutton.id = "shoot-button"; shootbutton.textContent = "Shoot";
+				shootbutton.style.cssText = "min-width:60%;width:180px;float:right;height:40px;font-size:large;";
+				shootbutton.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+				row.appendChild( resetbutton ); row.appendChild( shootbutton ); tab.appendChild( row );
+
+			//	watch( shootbutton, "onclick", function(prop,event,value){
+			//		debugMode && console.log({item:shootbutton,event:event,value:value});
+			//	});
+
+			})( TabUI.Shooting.tab );
+
+		</script>
+
+		<script>
+
+		//	Velocity helper.
+			localPlayer.velocityHelper = new VelocityHelper( localPlayer.controller );
+
+			function VelocityHelper(controller){
+
+				var power = 0.5; // length;
+				var origin = new THREE.Vector3();
+				var direction = new THREE.Vector3(); // must be normalized.
+				var helper = new THREE.ArrowHelper(direction, origin, power);
+				helper.name = "velocity helper"; scene.add( helper );
+
+				watch( controller, "currentJumpPower", function(prop,action,value){
+					helper.setLength( Math.abs(value) ); // debug negative values!
+				});
+
+				watch( controller.velocity, ["x","y","z"], function(vec,act,val){
+					helper.position.copy(controller.center);
+				//	direction must be normalized, important!!
+					direction = controller.velocity.clone().normalize(); // important!
+					helper.setDirection( direction );
+				}); 
+				
+				return helper;
+			}
+			
+
+		//	Ball (entity).
+
+			const ball = (function(){
+
+				var radius = 0.12;
+				var geometry = new THREE.SphereGeometry(radius);
+				var material = new THREE.MeshLambertMaterial();
+				var mesh = new THREE.Mesh(geometry, material);
+			//	var entity = new Entity( mesh );
+			//	entity.name = "Ball"; 
+			//	entity.radius = radius; 
+			//	entity.position.y = radius;
+				scene.add( mesh );
+
+			//	takeCameraLight( mesh ); takeCameraControls( mesh );
+
+				var controller = new MW.CharacterController(mesh, radius);
+				controller.center.y = 10; world.add( controller );
+
+				controller.addEventListener("startJumping", function(){
+					debugMode && console.log( "onStartShooting" ); // debug
+				});
+				controller.addEventListener("startIdling", function(){
+					debugMode && console.log( "startIdling" ); // debug
+				});
+
+			//	Overwrite jump method.
+			//	example: ball.shoot(10, 0.2, -cameraControls.frontAngle);
+				controller.shoot = function(speed, power, direction){
+					if (speed) controller.movementSpeed = speed;
+				// 	power is not working: we must hack CharacterController.updateJumping: 
+				//	this.currentJumpPower = Math.cos(Math.min(progress, power) * Math.PI);
+				//	if (power) controller.currentJumpPower = power; // must hacked!
+					if (direction) controller.direction = direction;
+					controller.jumpStartTime = Date.now();
+					controller.isRunning = true; 
+					controller.isJumping = true;
+					controller.addEventListener("startWalking", function onEndShooting(){
+						controller.removeEventListener("startWalking", onEndShooting);
+						controller.isRunning = false; console.log( "onEndShooting" );
+					});
+				};
+
+			//	Velocity helper.
+				var power = 0.5; // length;
+				var origin = new THREE.Vector3();
+				var direction = new THREE.Vector3(); // must be normalized.
+				var helper = new THREE.ArrowHelper(direction, origin, power);
+				helper.name = "velocity helper";
+				scene.add( helper );
+
+				watch( controller, "currentJumpPower", function(prop,action,value){
+					helper.setLength( Math.abs(value) ); // debug negative values!
+				});
+
+				watch( controller.velocity, ["x","y","z"], function(vec,act,val){
+					helper.position.copy(controller.center);
+				//	direction must be normalized, important!!
+					direction = controller.velocity.clone().normalize(); // important!
+					helper.setDirection( direction );
+				}); 
+				
+			//	entity.addEventListener("kick", function(){});
+			//	scene.add( entity ); debugMode && console.log( entity );
+				return controller;
+
+			})();
+
+		//	Shooting UI.
+/*
+			(function(input,increase,descrease){
+
+			})(
+				TabUI.Shooting.tab.querySelector("input#speed-input"),  // input,
+				TabUI.Shooting.tab.querySelector("li#speed-increase"),  // increase,
+				TabUI.Shooting.tab.querySelector("li#speed-decrease")   // descrease,
+			);
+*/
+			(function(speed_input,power_input,direction_input,shoot_button, controller){
+
+				speed_input.value = 10, power_input.value = 1, direction_input.value = controller.direction;
+
+				controller.addEventListener("startWalking", function onEndShooting(){
+					controller.isRunning = false; controller.dispatchEvent( {type:"endShooting"} );
+				});
+
+				watch( shoot_button, "onclick", function(prop,action,value){
+					controller.movementSpeed = round(speed_input.value, 2); // speed;
+					controller.currentJumpPower = round(power_input.value, 2) // power;
+					controller.direction = round(DEG2RAD*direction_input.value, 1); // direction;
+				//	controller.direction = -cameraControls.frontAngle; // direction;
+				//	controller.shoot(speed, power, direction);
+					controller.dispatchEvent( {type:"startShooting"} );
+					controller.jumpStartTime = Date.now();
+					controller.isRunning = true; 
+					controller.isJumping = true;
+				});
+
+				//	controller.addEventListener("startWalking", function onEndShooting(){
+				//		controller.removeEventListener("startWalking", onEndShooting);
+				//		controller.isRunning = false; 
+				//		controller.dispatchEvent( {type:"endShooting"} );
+				//	});
+
+				shoot_button.addEventListener("click", function(){
+					callWatchers(shoot_button, "onclick", "click", null);
+				});
+
+				controller.addEventListener("startShooting", function(){
+					debugMode && console.log( "startShooting" ); // debug
+				});
+
+				controller.addEventListener("endShooting", function(){
+					debugMode && console.log( "endShooting" ); // debug
+				});
+
+			})( 
+				TabUI.Shooting.tab.querySelector("input#speed-input"), // speed_input,
+				TabUI.Shooting.tab.querySelector("input#power-input"), // power_input,
+				TabUI.Shooting.tab.querySelector("input#direction-input"), // direction_input,
+				TabUI.Shooting.tab.querySelector("div#shoot-button"), ball // shoot_button, controller
+			);
+
+			(function(reset_button, controller){
+
+				watch( reset_button, "onclick", function(prop,action,value){
+					controller.center.set(0,1,0);
+				});
+				
+				reset_button.addEventListener("click", function(){
+					callWatchers(reset_button, "onclick", "click", null);
+				});
+
+			})( TabUI.Shooting.tab.querySelector("div#reset-button"), ball );  // reset_button, controller.
+
+
+		</script>
+
+		<script>
+
+		//	State Machine demo for Animation controller.
+		//	Some Non-player character states are: 
+		//	loading,idling,running,jumping,sliding,falling,finished,looping,attacking,defencing,...
+
+			(function(url){ 
+
+				var loader = new THREE.FBXLoader();
+				loader.load(url, function( group ){
+					
+				//	group.position.z = -1; group.name = "Anemone";
+					debugMode && console.log( group ); // scene.add( group ); 
+
+					var mesh = group.getObjectByProperty("type", "SkinnedMesh");
+					mesh.frustumCulled = false; // important!
+
+					mesh.animations = group.animations; // very important!
+					var bone = group.getObjectByProperty("type", "Bone");
+					debugMode && console.log( bone ); // "mixamorigHips"
+					mesh.add( bone ); scene.add( mesh );
+					debugMode && console.log( mesh );
+
+				//	Skeleton helper.
+					var skeletonHelper = new THREE.SkeletonHelper( mesh );
+					skeletonHelper.visible = true; scene.add( skeletonHelper );
+					debugMode && console.log( skeletonHelper );
+
+				//	Take camera controls.
+				//	takeCameraLight( bone ); takeCameraControls( bone );
+
+				//	Animation controller.
+					animationController = new MW.AnimationController( mesh );
+
+				//	Once play animations.
+					for (var name in animationController.motion) {
+						animationController.motion[ name ].setLoop( THREE.LoopOnce ); // important?
+						animationController.motion[ name ].clampWhenFinished = true;  // important?
+					} 
+
+				//	Position helper.
+					var positionHelper = new THREE.Mesh(
+						new THREE.CircleBufferGeometry( 0.5, 8 ).rotateX(-Math.PI/2),
+						new THREE.MeshBasicMaterial({color:0xffff00,  wireframe:true})
+					); 
+
+					positionHelper.name = "position helper";
+
+				//	watch( mesh.position, ["x","z"], function(prop,action,value){
+				//		positionHelper.position[prop] = value;
+				//	});
+
+					scene.add(positionHelper); // positionHelper.position.copy( group.position ); 
+
+					animationController.mixer.addEventListener("loop", function(e){
+					//	debugMode && console.log("loop event:", e); // debug!
+					});
+
+					animationController.mixer.addEventListener("finished", function(e){
+						debugMode && console.log("finished event:", e); // debug!
+					});
+
+					//	Add mesh.position to VectorKeyframeTrack tracks[0] values.
+					//	var position = mesh.position; 
+					//	var clip = e.action.getClip();
+					//	var track = clip.tracks[0]; // debugMode && console.log( track );
+					//	var values = track.values; var length = values.length; var step = 3;
+					//	debugMode && console.log( values, position );
+					//	for (var i = 0; i < length - step; i += step){
+					//		clip.tracks[0].values[i] = mesh.position.x + values[i];
+					//		clip.tracks[0].values[i+2] = mesh.position.z + values[i+2];
+					//	}
+
+					//	positionHelper.position.copy( group.position ); 
+					//	group.position.copy( positionHelper.position );
+					//	var name = animationController.currentMotionName;
+					//	var tracks = animationController.motion[name].getClip().tracks;
+					//	var values = tracks[1].values; // VectorKeyframeTrack.name: "mixamorigHips.position"
+					//	var index = values.length - 1; 
+					//	var z = values[index], y = group.position.y, x = values[index-2];
+					//	var position = new THREE.Vector3(x,y,z); positionHelper.position.add(position);
+
+				//	animationController.mixer.addEventListener("loop", function(e){
+				//		debugMode && console.log("loop event:", e); // debug!
+				//	});
+
+				//	Update.
+					var clock = new THREE.Clock();
+					(function update(){
+
+						requestAnimationFrame( update );
+						var delta = clock.getDelta();
+						animationController.update( delta );
+						positionHelper.position.x = mesh.position.x;
+						positionHelper.position.z = mesh.position.z;
+
+					})();
+
+					//	Get last index of times.
+					//	if ( !animationController.currentMotionName ) return;
+					//	var name = animationController.currentMotionName;
+					//	var time = animationController.motion[name].time;
+					//	var clip = animationController.motion[name].getClip();
+					//	var track = animationController.motion[name].getClip().tracks[0];
+					//	var times = animationController.motion[name].getClip().tracks[0].times;
+					//	var index = times.findIndex(function(value){ return value > time; }) - 1; // important!
+					//	if ( index > -1 ) { console.log(index); } 
+					//		Update track values.
+					//		track.values[index] = mesh.position.x;   // demo!
+					//		track.values[index+2] = mesh.position.z; // demo!
+					//	}
+
+					debugMode && console.log( animationController );
+				//	window.animationController = animationController; // debug!
+				//	animationController.play( Object.keys( animationController.motion )[0] ); // debug!
+
+
+				//	Animations Tab UI.
+
+					(function(input,animations_droplist,upperbody_droplist,lowerbody_droplist){
+
+						var n = 0;
+
+						watch( input, "onchange", function(prop, event, files){
+
+							var interval;
+
+							if ( !input.files.length ) return;
+							if ( !animationController ) return; 
+
+							for ( var i = 0; i < input.files.length; i++ ) {
+
+								setTimeout(function( file ){
+
+									var filename = file.name.replace(".fbx", "");
+									var extension = file.name.split( "." ).pop().toLowerCase();
+
+									var reader = new FileReader();
+
+									reader.addEventListener( "progress", function ( e ) {
+										var size = "(" + Math.floor( e.total / 1000 ).format() + " KB)";
+										var progress = Math.floor( ( e.loaded / e.total ) * 100 ) + "%";
+										console.log( "Loading", filename, size, progress );
+									});
+
+									reader.addEventListener( "load", function ( e ) {
+
+										var data = reader.result;
+										var loader = new THREE.FBXLoader();
+										var group = loader.parse( data );
+										group.name = filename;
+										console.log( group );
+
+									//	Add animations.
+										console.log( group.animations );
+
+										if ( group.animations.length ) {
+											var mixer = animationController.mixer;
+											var object = animationController.object;
+											var animations = group.animations;
+											animations.forEach( function( clip ){
+											//	debugMode && console.log( clip );
+
+												var track = clip.tracks[1]; // "mixamorigHips.position"
+
+											//	Create mesh.position track from mixamorigHips.position.
+												var meshTimes = [];
+												for (var i=0; i < track.times.length; i++) {
+													meshTimes.push( track.times[i] );
+												}
+												var meshValues = [];
+												for (var j=0; j < track.values.length; j++){
+													meshValues.push( track.values[j] );
+												}
+												var offset = meshValues[1]; // y.
+												for (var k=1; k < meshValues.length; k+=3){
+													meshValues[k] -= offset;
+												}
+
+												var keyframeTrack = new THREE.VectorKeyframeTrack(".position",meshTimes,meshValues);
+												clip.tracks[0] = keyframeTrack; // clip.tracks.push( keyframeTrack );
+
+											//	debugMode && console.log( "groupTimes:", groupTimes );
+											//	debugMode && console.log( "groupValues:", groupValues );
+
+											//	Create in-place mixamorigHips.position track.
+												var name = track.name;
+												var index = track.times.length - 1;
+												var times = [0]; times.push( track.times[index] );
+												var x = track.values[0], y = track.values[1], z = track.values[2];
+												var values = [x,y,z,x,y,z];
+												clip.tracks[1] = new THREE.VectorKeyframeTrack(name,times,values);
+												debugMode && console.log( clip );
+
+											/*	=========================================================================  //
+											//	Convert animation "in-Place" example.                                      //
+											//	var values = clip.tracks[1].values;           // "mixamorigHips.position"  //
+											//	const x = values[0], z = values[2];                                        //
+											//	var length = values.length, step=3;                                        //
+											//	for (var i=0, j=2; j < length; i+=step, j+=step){                          //
+											//		values[i] = x, values[j] = z;                                          //
+											//	} debugMode && console.log( clip.tracks[1] ); // "mixamorigHips.position"  //
+											//	=========================================================================  */
+
+												var name = filename; var text = ++n+"."+filename; clip.name = name;
+												animationController.motion[ name ] = mixer.clipAction( clip, object );
+												animationController.motion[ name ].setLoop( THREE.LoopOnce ); // important?
+												animationController.motion[ name ].clampWhenFinished = true;  // important?
+
+												if ( animations_droplist ) {
+													var option = document.createElement("option");
+													option.text = text; option.value = name;
+													animations_droplist.appendChild( option );
+													animations_droplist.value = ""; 
+												}
+
+											//	if ( upperbody_droplist ) {
+											//		var option = document.createElement("option");
+											//		option.text = text; option.value = name;
+											//		upperbody_droplist.appendChild( option );
+											//		upperbody_droplist.value = ""; 
+											//	}
+											//	if ( lowerbody_droplist ) {
+											//		var option = document.createElement("option");
+											//		option.text = text; option.value = name;
+											//		lowerbody_droplist.appendChild( option );
+											//		lowerbody_droplist.value = ""; 
+											//	}
+
+											});
+										}
+
+									}, false );
+
+									reader.readAsArrayBuffer( file );
+
+								}, 0, input.files[i] );
+
+							}
+
+						});
+
+					})(
+						TabUI.Animations.tab.querySelector("input#animations-file-input"), // input,
+						TabUI.Animations.tab.querySelector("select#animations-droplist"),  // animations_droplist.
+						TabUI.Animations.tab.querySelector("select#upperbody-droplist"),   // upperbody_droplist.
+						TabUI.Animations.tab.querySelector("select#lowerbody-droplist")    // lowerbody_droplist.
+					);
+
+				//	Replay button.
+
+					(function(replay_button, animations_droplist){
+
+						replay_button.addEventListener( "click", function(){
+							var name = animationController.currentMotionName;
+							callWatchers( replay_button, "onclick", "click", name);
+						});
+
+						watch(replay_button, "onclick", function(prop,event,value){
+							if ( !animationController.currentMotionName ) return;
+
+							var name = animationController.currentMotionName;
+						//	animationController.play( name );
+							animationController.motion[name].reset();
+
+						});
+
+						//	var clip = animationController.motion[name].getClip(); 
+						//	var index = clip.tracks.length - 1;
+						//	var track = clip.tracks[index]; // "Anemone.position"
+						//	for (var i=0; i<track.values.length; i+=3){
+						//		track.values[i] += group.position.x;
+						//		track.values[i+2] += group.position.z;
+						//	}
+
+						//	Position helper.
+						//	group.position.copy( positionHelper.position );
+						//	var name = animationController.currentMotionName;
+						//	var tracks = animationController.motion[name].getClip().tracks;
+						//	tracks[1]: VectorKeyframeTrack.name: "mixamorigHips.position"
+						//	var values = tracks[1].values; var index = values.length - 1; 
+						//	var z = values[index], y = group.position.y, x = values[index-2];
+						//	var position = new THREE.Vector3(x,y,z); positionHelper.position.add(position);
+
+					//	takeCameraControls(animationController.object.getObjectByName("mixamorigHips")); // TODO.
+
+					})( 
+						TabUI.Animations.tab.querySelector("div#animations-replay-button"), // replay_button,
+						TabUI.Animations.tab.querySelector("select#animations-droplist")    // animations_droplist.
+					);
+
+				//	Animations droplist.
+
+					(function(animations_droplist){
+
+						watch( animations_droplist, "onchange", function(prop,event,name){
+							if ( !animationController ) return;
+							animationController.play( name );
+							animationController.motion[ name ].reset();
+						});
+
+					})( TabUI.Animations.tab.querySelector("select#animations-droplist") );
+
+						//	Position helper.
+						//	group.position.copy( positionHelper.position );
+						//	var name = animationController.currentMotionName;
+						//	var tracks = animationController.motion[name].getClip().tracks;
+						//	tracks[1]: VectorKeyframeTrack.name: "mixamorigHips.position"
+						//	var values = tracks[1].values; var index = values.length - 1; 
+						//	var z = values[index], y = group.position.y, x = values[index-2];
+						//	var position = new THREE.Vector3(x,y,z); positionHelper.position.add(position);
+
+					(function(animations_droplist,upperbody_droplist,lowerbody_droplist){
+
+						var currentMotionName;
+						watch( animations_droplist, "onchange", function(prop,event,name){
+							currentMotionName = animationController.currentMotionName;
+						});
+
+						watch( upperbody_droplist, "onchange", function(prop,event,name){
+							debugMode && console.log( animationController.motion[name].getClip().tracks );
+						});
+
+						watch( lowerbody_droplist, "onchange", function(prop,event,name){
+							debugMode && console.log( animationController.motion[name].getClip().tracks );
+						});
+
+					})( 
+						TabUI.Animations.tab.querySelector("select#animations-droplist"),  // animations_droplist.
+						TabUI.Animations.tab.querySelector("select#upperbody-droplist"),   // upperbody_droplist.
+						TabUI.Animations.tab.querySelector("select#lowerbody-droplist")    // lowerbody_droplist.
+					);
+
+
+				});
+
+			})("/characters/anemone/Anemone.fbx");
+
+		</script>
+
+		<script>
+/*
+		//	State Machine demo for Character controller.
+		//	States: "idling,walking,running,jumping,falling,ect..."
+
+			localPlayer.fsm = (function(controller){
+
+				var transitions = [
+
+				//	{name:"idle", from:"none", to:"idling" }, // init,
+					{name:"goto", from:"*", to:function(state){ return state; }},
+
+				];
+
+				var methods = {
+
+					onInvalidTransition: function(transition, from, to){ 
+						console.error("invalid transition from",from,"to",to);
+					},
+
+					onEnterFalling: function(lifecycle){
+					//	debugMode && console.log(lifecycle);
+						controller.isRunning = false; 
+						controller.center.set(0,10,0);
+					},
+				};
+
+				//	onBeforeTransition: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onLeaveState: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onTransition: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onEnterState: function(lifecycle){ debugMode && console.log(lifecycle); },
+				//	onAfterTransition: function(lifecycle){ debugMode && console.log(lifecycle); },
+
+				var fsm = new StateMachine({
+				//	init: "idling",              // string, (state)
+					transitions: transitions,    // array,
+					methods: methods,		     // object
+				});
+
+			//	fsm.idle(); console.log( "state:", fsm.state ); // init.
+
+				controller.addEventListener("startIdling",  function(){ fsm.goto("idling" ); });
+				controller.addEventListener("startWalking", function(){ fsm.goto("running"); });
+				controller.addEventListener("startJumping", function(){ fsm.goto("jumping"); });
+				controller.addEventListener("startFalling", function(){ fsm.goto("falling"); });
+				controller.addEventListener("startSliding", function(){ fsm.goto("sliding"); });
+				debugMode && console.log( controller );
+
+				return fsm;
+
+			})( localPlayer.controller );
+
+		//	Enhanced Visualization.
+		//	Graphviz Visual Editor at: "http://magjac.com/graphviz-visual-editor".
+		//	const visualize = StateMachineVisualize;
+		//	console.log( visualize(fsm, {name:"demo", orientation:"vertical"}) );
+*/
+		</script>
+
+		<script>
+/*
+		//	Non-Player Character with Finite State Machine.
+
+			var npcEntity = (function(){
+
+				var radius = 0.5; // important!
+
+			//	A mesh (required for entity).
+			//	You may replace with a skinned mesh.
+
+				var mesh = (function(d){
+					var geometry = new THREE.BoxGeometry(d,d,d);
+					var material = new THREE.MeshLambertMaterial();
+					var mesh = new THREE.Mesh(geometry,material);
+					return mesh;
+				})( 1.0 );
+
+			//	Non-Player Character entity.
+				var npc = (function(mesh){
+					var entity = new Entity(mesh);
+					entity.radius = radius;
+					entity.position.set( 0, 0, 0 );
+					entity.name = "ncp entity";
+					scene.add( entity );
+					return entity; // important!
+				})( mesh );
+
+			//	Non-Player Character controller.
+				var controller = (function( object, radius ){
+					var controller = new MW.CharacterController( object, radius );
+					controller.movementSpeed = 5;
+					controller.maxSlopeGradient = 0.5;
+					controller.center.set(0, radius, 0);
+					world.add( controller );
+				//	Update player direction.
+					watch(controller, "direction", function(prop,action,value){
+						object.rotation.y = value + Math.PI;
+					});
+					return controller;
+				})( npc, radius );
+
+				
+			//	NPC controller Finite State Machine.
+
+			//	options.
+
+				var transitions = [
+
+				//	{name:"walk", from:"*", to:"running"},
+					{name:"goto", from:"*", to:function(state){ return state; }},
+				];
+
+				var methods = {
+
+					onInvalidTransition: function(transition, from, to){ 
+						console.error("NPC invalid transition from",from,"to",to);
+					},
+
+				//	onEnterFalling.
+					onFalling: function(lifecycle){
+					//	Reset controller center.
+						controller.center.set(0,50,0);
+						controller.direction = 2*Math.PI*Math.random() - Math.PI;
+					//	debugMode && console.log("NPC:", lifecycle);
+					},
+
+				};
+
+				//	onIdling: function(lifecycle){
+				//		var ID = lifecycle.fsm._fsm.config.options.requestFrameID;
+				//		debugMode && console.log("requestFrameID:", ID ); // debug.
+				//	},
+
+				//	lookAt localPlayer.controller.center.
+				//	onLeaveRunning: function(lifecycle){
+				//		var ID = lifecycle.fsm._fsm.config.options.requestFrameID;
+				//		cancelAnimationFrame( ID );
+				//		console.log("requestFrame", ID, "canceled!!!");
+				//	},
+				//	onEnterRunning.
+				//	onRunning: function(lifecycle){
+				//	//	pursue localPlayer.
+				//		(function update(){
+				//			lifecycle.fsm._fsm.config.options.requestFrameID = requestAnimationFrame(update);
+				//		//	console.log(lifecycle.fsm.state, lifecycle.fsm._fsm.config.options.requestFrameID);
+				//		})();
+				//	},
+
+			//	state machine.
+
+				var fsm = new StateMachine({
+					methods: methods,		     // object
+					transitions: transitions,    // array,
+					requestFrameID: null,        // integer,
+					
+				});
+
+				controller.addEventListener("startIdling", function(){ 
+				//	Switch to startWalking immediately on startIdling.
+				//	Use setTimeout to trigger changed event; important!
+					setTimeout(function(){
+						controller.isIdling  = !controller.isIdling; 
+						controller.isRunning = !controller.isIdling;
+					}); 
+				//	debugMode && console.log( this ); // --> controller.
+				});
+
+				controller.addEventListener("startFalling", function(){ 
+				//	Switch to startIdling at end of falling.
+				//	Use setTimeout to trigger changed event; important!
+					setTimeout(function(){
+						controller.isIdling = false;
+						controller.isRunning = false;
+					}); 
+				//	debugMode && console.log( this ); // --> controller.
+				});
+
+				controller.addEventListener("startIdling",  function(e){ fsm.goto("idling" ); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startWalking", function(e){ fsm.goto("running"); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startJumping", function(e){ fsm.goto("jumping"); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startFalling", function(e){ fsm.goto("falling"); console.log(e.type, "\tstate:", fsm.state); });
+				controller.addEventListener("startSliding", function(e){ fsm.goto("sliding"); console.log(e.type, "\tstate:", fsm.state); });
+
+				npc.fsm = fsm; 
+				npc.controller = controller; 
+
+				return npc;
+
+			})();
+
+			console.log( npcEntity );
+*/
+		</script>
+
+	<!-- Entities.js -->
+
+		<script>
+/*
+			const entities = [];
+			
+			(function( entities ){
+
+				var clock = new THREE.Clock();
+
+				(function update(){
+
+					requestAnimationFrame( update );
+					var delta = clock.getDelta();
+					var length = entities.length;
+					for ( var i = 0; i < length; i++ ){
+						entities[i].update( delta );
+					}
+
+				})();
+
+			})( entities );
+
+		//	Entity example.
+			var geometry = new THREE.BoxGeometry(1,1,1);
+			var material = new THREE.MeshLambertMaterial();
+			var mesh = new THREE.Mesh(geometry,material);
+			var entity = new Entity(mesh);
+			entity.radius = 1; entity.position.y = 0.5; 
+			console.log("entity:", entity);
+			scene.add(entity); entities.push(entity);
+*/
+		</script>
+
+		<script>
+/*
+					(function(select_input,select_increase,select_decrease,animations_droplist){
+
+						var interval, currentMotionName; 
+
+					//	TODO: select_input,select_increase,select_decrease...
+
+						function onTimescaleMouseDown(){
+							clearTimeout( interval ); // important!
+							interval = setTimeout( function update( button, step, min, max, name, animationController ){
+								if ( !name ) return clearTimeout( interval );
+								var value = animationController.motion[ name ].timeScale;
+								if ( isNaN(value) ) return clearTimeout( interval ); // important!
+								if (button === scale_increase) value = THREE.Math.clamp(value+step, min,max);
+								if (button === scale_decrease) value = THREE.Math.clamp(value-step, min,max);
+								if ( isNaN(value) ) return clearTimeout( interval ); // important!
+								scale_input.value = value.toFixed(2); animationController.motion[ name ].timeScale = value; 
+								interval = setTimeout( update, 20, button, step, min, max, name, animationController );
+							}, 500, this, 0.01, -1, 1, currentMotionName, animationController );
+						}
+
+						function onTimescaleMouseClick(){
+							clearTimeout( interval ); if ( !currentMotionName ) return;
+							(function( button, step, min, max, name, animationController ){
+								if ( !name ) return; if ( !animationController ) return;
+								var value = animationController.motion[ name ].timeScale; 
+								if ( isNaN(value) ) return; // important!
+								if (button === scale_increase) value = THREE.Math.clamp(value+step, min,max);
+								if (button === scale_decrease) value = THREE.Math.clamp(value-step, min,max);
+								if ( isNaN(value) ) return; scale_input.value = value.toFixed(2);
+								animationController.motion[ name ].timeScale = value; 
+							})( this, 0.01, -1, 1, currentMotionName, animationController );
+						}
+
+					//	Select animation inputs.
+
+						watch( animationController, "currentMotionName", function(prop,action,value){
+							scale_increase.removeEventListener( "mousedown", onTimescaleMouseDown );
+							scale_decrease.removeEventListener( "mousedown", onTimescaleMouseDown );
+							scale_increase.removeEventListener( "click", onTimescaleMouseClick );
+							scale_decrease.removeEventListener( "click", onTimescaleMouseClick );
+						});
+
+						watch( animationController, "currentMotionName", function(prop,action,value){
+							currentMotionName = value; animationController.motion[ value ].reset();
+							scale_input.value = animationController.motion[value].timeScale.toFixed(2);
+						});
+
+						watch( animationController, "currentMotionName", function(prop,action,value){
+							scale_increase.addEventListener( "mousedown", onTimescaleMouseDown );
+							scale_decrease.addEventListener( "mousedown", onTimescaleMouseDown );
+							scale_increase.addEventListener( "click", onTimescaleMouseClick );
+							scale_decrease.addEventListener( "click", onTimescaleMouseClick );
+						});
+
+					})( 
+						TabUI.Character.tab.querySelector("input#animations-select-input"), // select_input,
+						TabUI.Character.tab.querySelector("li#animations-select-increase"), // select_increase,
+						TabUI.Character.tab.querySelector("li#animations-select-decrease"), // select_decrease,
+						TabUI.Character.tab.querySelector("select#animations-droplist")     // animations_droplist.
+					);
+*/
+		</script>
+
+	</body>
+</html>
